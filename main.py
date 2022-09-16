@@ -1,6 +1,7 @@
 from datetime import time
 import tkinter as tk
 from tkinter import filedialog
+from types import NoneType
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import collections as matcoll
@@ -95,20 +96,27 @@ mdf_data = mdfreader.Mdf(
     channel_list = channels
 )
 
-data = pd.DataFrame()
+channel_list = []
 for channel in channels:
-    data[channel] = (
-        mdf_data.get_channel_data(mdf_data.get_channel(channel)['master']),
-        mdf_data.get_channel_data(channel)
-    )
+    chan_info = mdf_data.get_channel(channel)
+    if chan_info is not None:
+        time_chan = chan_info['master']
+        time_data = mdf_data.get_channel_data(time_chan) - mdf_data.get_channel_data(time_chan).min()
+        channel_dict = { 
+            'name': channel,
+            'time': time_data,
+            'data': mdf_data.get_channel_data(channel)
+        }        
+        channel_list.append(channel_dict)
+    else:
+        print("ERROR: No data found for channel:", channel)
 
-
-# Set start point
-time_offset = mdf_data['t_68']['data'].min()
-time_data = mdf_data['t_68']['data'] - time_offset
+print(type(channel_list), channel_list)
+data = pd.DataFrame(channel_list)
+print(type(data), data)
 
 # Calculate sample rate
-deltas = np.diff(mdf_data['t_68']['data'], n=1)
+deltas = np.diff(data['Cadet_IP_Speed']['time'], n=1)
 sr = int(1 / (sum(deltas) / len(deltas)))
 
 # Gear used
@@ -130,19 +138,25 @@ gear_ratios = {
     6: 3.878,
     7: 3.435
 }
-actualGear = np.argmax(np.bincount(mdf_data['GearEngd']['data']))
+
+actualGear = np.argmax(np.bincount(data['GearEngd']['data']))
 actualGear_hr = gears_hr[actualGear]
 
-mdf_data['calc_IPTrqGradient']['data'] = np.gradient(uniform_filter1d(mdf_data['Cadet_IP_Torque']['data'], int(sr)), edge_order=2) * 10
-mdf_data['calc_IPTrqGradient_smoothed']['data'] = smooth(mdf_data['calc_IPTrqGradient']['data'], sr + 1)
+data['calc_IPTrqGradient'] = {
+    'time': data['Cadet_IP_Torque']['time'],
+    'data': np.gradient(uniform_filter1d(data['Cadet_IP_Torque']['data'] , size=int(sr)), edge_order=2) * 10
+}
+print("(data['calc_IPTrqGradient']", type(data['calc_IPTrqGradient']))
+print(data['calc_IPTrqGradient'])
+
+data['calc_IPTrqGradient_smoothed'] = smooth(data['calc_IPTrqGradient'][1], sr + 1)
 
 # Axle Torque Calculations
-mdf_data['calc_AxleTrqFromOutput']['data'] = mdf_data['Cadet_OP_Torque_1']['data'] + mdf_data['Cadet_OP_Torque_2']['data']
-mdf_data['calc_AxleTrqFromInput']['data'] = mdf_data['Cadet_IP_Torque']['data'] * gear_ratios[actualGear]
-mdf_data['calc_LockTrq']['data'] = mdf_data['Cadet_OP_Torque_1']['data'] - mdf_data['Cadet_OP_Torque_2']['data']
-mdf_data['calc_OPSpeedDelta']['data'] = smooth(mdf_data['WhlRPM_RL']['data'] - mdf_data['WhlRPM_RR']['data'], sr + 1)
-print("+-------------------------+")
-print(mdf_data.info())
+data['calc_AxleTrqFromOutput'] = data['Cadet_OP_Torque_1']['data'] + data['Cadet_OP_Torque_2']['data']
+data['calc_AxleTrqFromInput'] = data['Cadet_IP_Torque']['data'] * gear_ratios[actualGear]
+data['calc_LockTrq'] = data['Cadet_OP_Torque_1']['data'] - data['Cadet_OP_Torque_2']['data']
+data['calc_OPSpeedDelta'] = smooth(data['WhlRPM_RL']['data'] - data['WhlRPM_RR']['data'], sr + 1)
+
 # Filter data
 # Filter conditions
 
@@ -159,15 +173,15 @@ print(plot_set_points)
 fig, ax = plt.subplots(3)
 axSecondary = ax[0].twinx()
 axSecondary.plot(
-    time_data[:len(time_data) - 1],
-    mdf_data['calc_IPTrqGradient_smoothed']['data'],
+    data['calc_IPTrqGradient'][0][:len(time_data) - 1],
+    data['calc_IPTrqGradient_smoothed'][1],
     color='orange',
     label='IP Torque Gradient Smoothed',
     marker=None    
 )
 ax[0].plot(
-    time_data,
-    mdf_data['Cadet_IP_Torque']['data'],
+    data['Cadet_IP_Torque'][0],
+    data['Cadet_IP_Torque'][1],
     color='green',
     label='IP Torque',
     marker=None    
