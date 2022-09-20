@@ -59,6 +59,36 @@ def smooth(x, window_len, window='hanning'):
     return y[int((window_len/2-1)):-int((window_len/2)+1)]
 
 
+def set_axis(plots, axis, label, start, end, major, minor=None):
+    """
+    Function for setting plot label, axis major
+    and minor ticks and formats the gridlines
+    """
+    for plot in plots:
+        if major:
+            major_ticks = np.arange(start, end + 1, major)
+            if axis == 'x':
+                plot.set_xlabel(label)
+                plot.set_xlim([start, end])
+                plot.set_xticks(major_ticks)
+            elif axis == 'y':
+                plot.set_ylabel(label)
+                plot.set_ylim([start, end])
+                plot.set_yticks(major_ticks)
+
+        if minor:
+            minor_ticks = np.arange(start, end + 1, minor)
+            if axis == 'x':
+                plot.set_xticks(minor_ticks, minor=True)
+            elif axis == 'y':
+                plot.set_yticks(minor_ticks, minor=True)
+
+        if major and minor:
+            plot.grid(which='both')
+        plot.grid(which='minor', alpha=0.4)
+        plot.grid(which='major', alpha=0.8)
+
+
 # Select file for analysis
 filePath = './data/17082022_1306-019-DEV_Loaded_EOL_004_PHASE 150.mdf'
 if filePath == '':
@@ -109,12 +139,11 @@ for channel in channels:
     else:
         print("ERROR: No data found for channel:", channel)
 
-print(data)
+data = data.rename(columns={'t_71': 'time'})
 
 # Calculate sample rate
-deltas = np.diff(data['t_71'], n=1)
+deltas = np.diff(data['time'], n=1)
 sr = int(1 / (sum(deltas) / len(deltas)))
-print("Sample Rate:", sr)
 
 # Gear used
 gears_hr = {
@@ -150,8 +179,8 @@ data['calc_AxleTrqFromInput'] = data['Cadet_IP_Torque'] * gear_ratios[actualGear
 data['calc_LockTrq'] = data['Cadet_OP_Torque_1'] - data['Cadet_OP_Torque_2']
 data['calc_OPSpeedDelta'] = np.append(smooth(data['WhlRPM_RL'] - data['WhlRPM_RR'], sr + 1), 0.0)
 
-# Filter data
-# Filter conditions
+# TODO: Filter data
+# TODO: Filter conditions
 
 # Set points for torque analysis graphs
 set_points_x = [-800, -400, -200, -100, 0, 100, 200, 400, 800]
@@ -165,35 +194,48 @@ plot_set_points = matcoll.LineCollection(set_points)
 fig, ax = plt.subplots(3)
 axSecondary = ax[0].twinx()
 axSecondary.plot(
-    data['t_71'],
+    data['time'],
     data['calc_IPTrqGradient_smoothed'],
     color='orange',
     label='IP Torque Gradient Smoothed',
     marker=None    
 )
 ax[0].plot(
-    data['Cadet_IP_Torque'],
+    data['time'],
     data['Cadet_IP_Torque'],
     color='green',
     label='IP Torque',
     marker=None    
 )
-ax[0].set_title("Input Torque & Input Torque Delta", loc='left')
-ax[0].grid()
-ax[0].legend(loc=2)
-ax[0].set_xlim([0, data['t_71'].max()])
-ax[0].set_xlabel("Time [s]")
-ax[0].set_ylim([-200, 200])
-ax[0].set_ylabel("Torque [Nm]")
+
 axSecondary.set_ylim([-10, 10])
 
 ax[1].plot(
-    data['t_71'],
+    data['time'],
     data['calc_AxleTrqFromInput'],
     color='blue',
-    label='IP Torque',
+    label='Axle Torque',
     marker=None    
 )
+ax[1].plot(
+    data['time'],
+    data['Cadet_OP_Torque_1'],
+    color='red',
+    label='LH OP Torque',
+    marker=None    
+)
+ax[1].plot(
+    data['time'],
+    data['Cadet_OP_Torque_2'],
+    color='orange',
+    label='RH OP Torque',
+    marker=None    
+)
+
+set_axis(ax, 'x', 'Time [s]', 0, data['time'].max(), 50, 5)
+set_axis([ax[0]], 'y', 'Torque [Nm]', -200, 200, 50, 10)
+set_axis([ax[1]], 'y', 'Torque [Nm]', -1000, 1000, 250, 50)
+ax[0].set_title("Input Torque & Input Torque Delta", loc='left')
 fig.suptitle(f'Diff Test Overview - 3rd Gear', fontsize=16)
 
 if Config["Debug"]:
@@ -205,6 +247,7 @@ if Config["Debug"]:
         """
     )
     print(filePath, "\n\n")
+    print(data.head())
     print(
         """
         =============
@@ -213,4 +256,12 @@ if Config["Debug"]:
         """
     )
     
+plt.subplots_adjust(
+    left=0.05,
+    bottom=0.07,
+    right=0.955,
+    top=0.9,
+    wspace=0.2,
+    hspace=0.4
+)
 plt.show()
