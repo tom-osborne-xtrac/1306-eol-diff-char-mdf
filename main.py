@@ -60,11 +60,12 @@ def smooth(x, window_len, window='hanning'):
 
 
 # Select file for analysis
-filePath = 'N:/Projects/1306/XT REPORTS/XT-13944 - Loaded Test Rig - EoL Testing/SAMPLE DATA/Development data/2022-08-17 - EoL Development/17082022_1306-019-DEV_Loaded_EOL_004_PHASE 150.mdf'
+filePath = './data/17082022_1306-019-DEV_Loaded_EOL_004_PHASE 150.mdf'
 if filePath == '':
     filePath = tk.filedialog.askopenfilename()
 fileName = os.path.basename(filePath)
 
+# Define channels
 channels = [
     # Speed Channels
     'Cadet_IP_Speed',
@@ -83,7 +84,7 @@ channels = [
     # Oil system channels
     'Cadet_Oil_flow',
     'Cadet_Oil_Pres',
-    'Cadet_Oil_Temp'
+    'Cadet_Oil_Temp',
 
     # Misc channels
     'CadetPhase',
@@ -95,29 +96,25 @@ mdf_data = mdfreader.Mdf(
     filePath,
     channel_list = channels
 )
+mdf_data.resample(master_channel="t_71")
 
-channel_list = []
+data = pd.DataFrame()
+
 for channel in channels:
     chan_info = mdf_data.get_channel(channel)
     if chan_info is not None:
         time_chan = chan_info['master']
-        time_data = mdf_data.get_channel_data(time_chan) - mdf_data.get_channel_data(time_chan).min()
-        channel_dict = { 
-            'name': channel,
-            'time': time_data,
-            'data': mdf_data.get_channel_data(channel)
-        }        
-        channel_list.append(channel_dict)
+        data[time_chan] = mdf_data.get_channel_data(time_chan) - mdf_data.get_channel_data(time_chan).min()
+        data[channel] = mdf_data.get_channel_data(channel)
     else:
         print("ERROR: No data found for channel:", channel)
 
-print(type(channel_list), channel_list)
-data = pd.DataFrame(channel_list)
-print(type(data), data)
+print(data)
 
 # Calculate sample rate
-deltas = np.diff(data['Cadet_IP_Speed']['time'], n=1)
+deltas = np.diff(data['t_71'], n=1)
 sr = int(1 / (sum(deltas) / len(deltas)))
+print("Sample Rate:", sr)
 
 # Gear used
 gears_hr = {
@@ -139,23 +136,19 @@ gear_ratios = {
     7: 3.435
 }
 
-actualGear = np.argmax(np.bincount(data['GearEngd']['data']))
+actualGear = np.argmax(np.bincount(data['GearEngd']))
 actualGear_hr = gears_hr[actualGear]
 
-data['calc_IPTrqGradient'] = {
-    'time': data['Cadet_IP_Torque']['time'],
-    'data': np.gradient(uniform_filter1d(data['Cadet_IP_Torque']['data'] , size=int(sr)), edge_order=2) * 10
-}
-print("(data['calc_IPTrqGradient']", type(data['calc_IPTrqGradient']))
-print(data['calc_IPTrqGradient'])
+calc_IPTrqGradient = np.gradient(uniform_filter1d(data['Cadet_IP_Torque'] , size=int(sr)), edge_order=2) * 10
+data['calc_IPTrqGradient'] = calc_IPTrqGradient.tolist()
 
-data['calc_IPTrqGradient_smoothed'] = smooth(data['calc_IPTrqGradient'][1], sr + 1)
+data['calc_IPTrqGradient_smoothed'] = np.append(smooth(data['calc_IPTrqGradient'], sr + 1), 0.0)
 
 # Axle Torque Calculations
-data['calc_AxleTrqFromOutput'] = data['Cadet_OP_Torque_1']['data'] + data['Cadet_OP_Torque_2']['data']
-data['calc_AxleTrqFromInput'] = data['Cadet_IP_Torque']['data'] * gear_ratios[actualGear]
-data['calc_LockTrq'] = data['Cadet_OP_Torque_1']['data'] - data['Cadet_OP_Torque_2']['data']
-data['calc_OPSpeedDelta'] = smooth(data['WhlRPM_RL']['data'] - data['WhlRPM_RR']['data'], sr + 1)
+data['calc_AxleTrqFromOutput'] = data['Cadet_OP_Torque_1'] + data['Cadet_OP_Torque_2']
+data['calc_AxleTrqFromInput'] = data['Cadet_IP_Torque'] * gear_ratios[actualGear]
+data['calc_LockTrq'] = data['Cadet_OP_Torque_1'] - data['Cadet_OP_Torque_2']
+data['calc_OPSpeedDelta'] = np.append(smooth(data['WhlRPM_RL'] - data['WhlRPM_RR'], sr + 1), 0.0)
 
 # Filter data
 # Filter conditions
@@ -167,21 +160,20 @@ for v in set_points_x:
     pair = [(v, 0), (v, 1000)]
     set_points.append(pair)
 plot_set_points = matcoll.LineCollection(set_points)
-print(plot_set_points)
 
 # Plot raw data
 fig, ax = plt.subplots(3)
 axSecondary = ax[0].twinx()
 axSecondary.plot(
-    data['calc_IPTrqGradient'][0][:len(time_data) - 1],
-    data['calc_IPTrqGradient_smoothed'][1],
+    data['t_71'],
+    data['calc_IPTrqGradient_smoothed'],
     color='orange',
     label='IP Torque Gradient Smoothed',
     marker=None    
 )
 ax[0].plot(
-    data['Cadet_IP_Torque'][0],
-    data['Cadet_IP_Torque'][1],
+    data['Cadet_IP_Torque'],
+    data['Cadet_IP_Torque'],
     color='green',
     label='IP Torque',
     marker=None    
@@ -189,15 +181,15 @@ ax[0].plot(
 ax[0].set_title("Input Torque & Input Torque Delta", loc='left')
 ax[0].grid()
 ax[0].legend(loc=2)
-ax[0].set_xlim([0, time_data.max()])
+ax[0].set_xlim([0, data['t_71'].max()])
 ax[0].set_xlabel("Time [s]")
 ax[0].set_ylim([-200, 200])
 ax[0].set_ylabel("Torque [Nm]")
 axSecondary.set_ylim([-10, 10])
 
 ax[1].plot(
-    time_data,
-    mdf_data['calc_AxleTrqFromInput']['data'],
+    data['t_71'],
+    data['calc_AxleTrqFromInput'],
     color='blue',
     label='IP Torque',
     marker=None    
@@ -213,10 +205,6 @@ if Config["Debug"]:
         """
     )
     print(filePath, "\n\n")
-    print('Time Offset:', type(time_offset), time_offset)
-    print("Sample rate:", sr)
-    print("Gear:", actualGear, actualGear_hr)
-    print("Timedata Type: ", type(time_data))
     print(
         """
         =============
