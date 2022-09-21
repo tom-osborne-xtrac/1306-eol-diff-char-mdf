@@ -52,9 +52,9 @@ data['calc_AxleTrqFromInput'] = data['Cadet_IP_Torque'] * ratio
 data['calc_LockTrq'] = data['Cadet_OP_Torque_1'] - data['Cadet_OP_Torque_2']
 data['calc_OPSpeedDelta'] = np.append(smooth(data['WhlRPM_RL'] - data['WhlRPM_RR'], sr + 1), 0.0)
 
-# TODO: Filter data
-# TODO: Refactor to put functions in utils file
-# TODO: Refactor to put config dicts into a config file
+# TODO: Add zero points for filtered data
+# TODO: Group data sets into single data points
+# TODO: Plot main differential characterisation graph
 # TODO: Make executable
 
 # LH Data
