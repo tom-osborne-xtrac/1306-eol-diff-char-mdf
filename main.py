@@ -173,7 +173,7 @@ data['calc_IPTrqGradient'] = calc_IPTrqGradient.tolist()
 
 data['calc_IPTrqGradient_smoothed'] = np.append(smooth(data['calc_IPTrqGradient'], sr + 1), 0.0)
 
-# Axle Torque Calculations
+# Calculated channels
 data['calc_AxleTrqFromOutput'] = data['Cadet_OP_Torque_1'] + data['Cadet_OP_Torque_2']
 data['calc_AxleTrqFromInput'] = data['Cadet_IP_Torque'] * gear_ratios[actualGear]
 data['calc_LockTrq'] = data['Cadet_OP_Torque_1'] - data['Cadet_OP_Torque_2']
@@ -181,6 +181,9 @@ data['calc_OPSpeedDelta'] = np.append(smooth(data['WhlRPM_RL'] - data['WhlRPM_RR
 
 # TODO: Filter data
 # TODO: Filter conditions
+
+dataLH = data[data['calc_OPSpeedDelta'] > 0]
+dataRH = data[data['calc_OPSpeedDelta'] < 0]
 
 # Set points for torque analysis graphs
 set_points_x = [-800, -400, -200, -100, 0, 100, 200, 400, 800]
@@ -192,8 +195,9 @@ plot_set_points = matcoll.LineCollection(set_points)
 
 # Plot raw data
 fig, ax = plt.subplots(3)
-axSecondary = ax[0].twinx()
-axSecondary.plot(
+axSecondary0 = ax[0].twinx()
+axSecondary1 = ax[1].twinx()
+axSecondary0.plot(
     data['time'],
     data['calc_IPTrqGradient_smoothed'],
     color='orange',
@@ -207,8 +211,6 @@ ax[0].plot(
     label='IP Torque',
     marker=None    
 )
-
-axSecondary.set_ylim([-10, 10])
 
 ax[1].plot(
     data['time'],
@@ -231,10 +233,47 @@ ax[1].plot(
     label='RH OP Torque',
     marker=None    
 )
+axSecondary1.plot(
+    data['time'],
+    data['WhlRPM_RL'],
+    color='grey',
+    label='RH OP Torque',
+    marker=None    
+)
+axSecondary1.plot(
+    data['time'],
+    data['WhlRPM_RR'],
+    color='darkgrey',
+    label='RH OP Torque',
+    marker=None    
+)
+axSecondary1.plot(
+    data['time'],
+    data['calc_OPSpeedDelta'],
+    color='black',
+    label='OP Speed Delta [rpm]',
+    marker=None
+)
 
+ax[2].plot(
+    dataLH['time'],
+    dataLH['calc_AxleTrqFromInput'],
+    color='blue',
+    label='Axle Torque',
+    marker=None    
+)
+ax[2].plot(
+    dataRH['time'],
+    dataRH['calc_AxleTrqFromInput'],
+    color='green',
+    label='Axle Torque',
+    marker=None    
+)
 set_axis(ax, 'x', 'Time [s]', 0, data['time'].max(), 50, 5)
 set_axis([ax[0]], 'y', 'Torque [Nm]', -200, 200, 50, 10)
-set_axis([ax[1]], 'y', 'Torque [Nm]', -1000, 1000, 250, 50)
+set_axis([ax[1], ax[2]], 'y', 'Torque [Nm]', -1000, 1000, 250, 50)
+axSecondary0.set_ylim([-10, 10])
+axSecondary1.set_ylim([-100, 100])
 ax[0].set_title("Input Torque & Input Torque Delta", loc='left')
 fig.suptitle(f'Diff Test Overview - 3rd Gear', fontsize=16)
 
