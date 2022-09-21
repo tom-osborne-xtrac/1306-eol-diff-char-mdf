@@ -168,12 +168,10 @@ gear_ratios = {
 actualGear = np.argmax(np.bincount(data['GearEngd']))
 actualGear_hr = gears_hr[actualGear]
 
-calc_IPTrqGradient = np.gradient(uniform_filter1d(data['Cadet_IP_Torque'] , size=int(sr)), edge_order=2) * 10
-data['calc_IPTrqGradient'] = calc_IPTrqGradient.tolist()
-
-data['calc_IPTrqGradient_smoothed'] = np.append(smooth(data['calc_IPTrqGradient'], sr + 1), 0.0)
-
 # Calculated channels
+calc_IPTrqGradient = np.gradient(uniform_filter1d(data['Cadet_IP_Torque'] , size=int(sr)), edge_order=2) * 100
+data['calc_IPTrqGradient'] = calc_IPTrqGradient.tolist()
+data['calc_IPTrqGradient_smoothed'] = np.append(smooth(data['calc_IPTrqGradient'], sr + 1), 0.0)
 data['calc_AxleTrqFromOutput'] = data['Cadet_OP_Torque_1'] + data['Cadet_OP_Torque_2']
 data['calc_AxleTrqFromInput'] = data['Cadet_IP_Torque'] * gear_ratios[actualGear]
 data['calc_LockTrq'] = data['Cadet_OP_Torque_1'] - data['Cadet_OP_Torque_2']
@@ -182,8 +180,13 @@ data['calc_OPSpeedDelta'] = np.append(smooth(data['WhlRPM_RL'] - data['WhlRPM_RR
 # TODO: Filter data
 # TODO: Filter conditions
 
+# LH Data
 dataLH = data[data['calc_OPSpeedDelta'] > 0]
+dataLH_filtered = dataLH[(abs(dataLH['calc_IPTrqGradient_smoothed']) < 1) & (abs(dataLH['calc_AxleTrqFromInput']) > 50)]
+
+# RH Data
 dataRH = data[data['calc_OPSpeedDelta'] < 0]
+dataRH_filtered = dataRH[(abs(dataRH['calc_IPTrqGradient_smoothed']) < 1) & (abs(dataRH['calc_AxleTrqFromInput']) > 50)]
 
 # Set points for torque analysis graphs
 set_points_x = [-800, -400, -200, -100, 0, 100, 200, 400, 800]
@@ -268,6 +271,22 @@ ax[2].plot(
     color='green',
     label='Axle Torque',
     marker=None    
+)
+ax[2].scatter(
+    dataLH_filtered['time'],
+    dataLH_filtered['calc_AxleTrqFromInput'],
+    color='magenta',
+    label='Axle Torque',
+    marker=".",
+    zorder=1
+)
+ax[2].scatter(
+    dataRH_filtered['time'],
+    dataRH_filtered['calc_AxleTrqFromInput'],
+    color='yellow',
+    label='Axle Torque',
+    marker=".",
+    zorder=1
 )
 set_axis(ax, 'x', 'Time [s]', 0, data['time'].max(), 50, 5)
 set_axis([ax[0]], 'y', 'Torque [Nm]', -200, 200, 50, 10)
