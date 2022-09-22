@@ -1,7 +1,5 @@
-from datetime import time
 import tkinter as tk
 from tkinter import filedialog
-from types import NoneType
 import matplotlib.pyplot as plt
 from matplotlib import collections as matcoll
 import numpy as np
@@ -57,13 +55,9 @@ data['calc_OPSpeedDelta'] = np.append(smooth(data['WhlRPM_RL'] - data['WhlRPM_RR
 # TODO: Plot main differential characterisation graph
 # TODO: Make executable
 
-# LH Data
-dataLH = data[data['calc_OPSpeedDelta'] > 0]
-dataLH_filtered = dataLH[(abs(dataLH['calc_IPTrqGradient_smoothed']) < 1) & (abs(dataLH['calc_AxleTrqFromInput']) > 50)]
-
-# RH Data
-dataRH = data[data['calc_OPSpeedDelta'] < 0]
-dataRH_filtered = dataRH[(abs(dataRH['calc_IPTrqGradient_smoothed']) < 1) & (abs(dataRH['calc_AxleTrqFromInput']) > 50)]
+# Split & Filter Data
+dataLH = data[(data['calc_OPSpeedDelta'] > 10.0) & (abs(data['calc_IPTrqGradient_smoothed']) < 1) & (abs(data['calc_AxleTrqFromInput']) > 50)]
+dataRH = data[(data['calc_OPSpeedDelta'] < -10.0) & (abs(data['calc_IPTrqGradient_smoothed']) < 1) & (abs(data['calc_AxleTrqFromInput']) > 50)]
 
 # Set points for torque analysis graphs
 set_points_x = [-800, -400, -200, -100, 0, 100, 200, 400, 800]
@@ -136,31 +130,24 @@ axSecondary1.plot(
 )
 
 ax[2].plot(
-    dataLH['time'],
-    dataLH['calc_AxleTrqFromInput'],
-    color='blue',
-    label='Axle Torque',
-    marker=None    
-)
-ax[2].plot(
-    dataRH['time'],
-    dataRH['calc_AxleTrqFromInput'],
-    color='green',
+    data['time'],
+    data['calc_AxleTrqFromInput'],
+    color='black',
     label='Axle Torque',
     marker=None    
 )
 ax[2].scatter(
-    dataLH_filtered['time'],
-    dataLH_filtered['calc_AxleTrqFromInput'],
-    color='magenta',
+    dataLH['time'],
+    dataLH['calc_AxleTrqFromInput'],
+    color='lime',
     label='Axle Torque',
     marker=".",
     zorder=1
 )
 ax[2].scatter(
-    dataRH_filtered['time'],
-    dataRH_filtered['calc_AxleTrqFromInput'],
-    color='yellow',
+    dataRH['time'],
+    dataRH['calc_AxleTrqFromInput'],
+    color='magenta',
     label='Axle Torque',
     marker=".",
     zorder=1

@@ -1,4 +1,5 @@
 import numpy as np
+import config
 
 def smooth(x, window_len, window='hanning'):
     """smooth the data using a window with requested size.
@@ -73,8 +74,8 @@ def set_axis(plots, axis, label, start, end, major, minor=None):
 
 
 def get_gear(channel):
-    gears = {1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 5: "5th", 6: "6th", 7: "7th"}
-    ratios = {1: 12.803, 2: 9.267, 3: 7.058, 4: 5.581, 5: 4.562, 6: 3.878, 7: 3.435}
+    gears = config.Gears
+    ratios = config.Ratios
     actualGear = np.argmax(np.bincount(channel))
     gear_hr = gears[actualGear]
     ratio = ratios[actualGear]
