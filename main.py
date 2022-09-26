@@ -1,14 +1,16 @@
+import os
 import tkinter as tk
 from tkinter import filedialog
+
 import matplotlib.pyplot as plt
-from matplotlib import collections as matcoll
-import numpy as np
-import os
-import pandas as pd
 import mdfreader
+import numpy as np
+import pandas as pd
+from matplotlib import collections as matcoll
 from scipy.ndimage import uniform_filter1d
-import config
-from utils import *
+
+import config as config
+from functions import *
 
 # Set-ExecutionPolicy Unrestricted -Scope CurrentUser
 
@@ -23,10 +25,7 @@ if filePath == '':
 fileName = os.path.basename(filePath)
 
 # Load data
-mdf_data = mdfreader.Mdf(
-    filePath,
-    channel_list = config.Channels
-)
+mdf_data = mdfreader.Mdf(filePath, channel_list = config.Channels)
 mdf_data.resample(master_channel="t_71")
 
 # Build a dataframe
@@ -60,7 +59,7 @@ data_f = data_f.reset_index()
 
 # Group Data
 # First we build a list of indices which we use to split to dataframe up
-group_ids = [len(data_f)]
+group_ids = []
 for idx, row in data_f.iterrows():
     if idx == len(data_f.index)-1:
         break
@@ -72,9 +71,20 @@ for idx, row in data_f.iterrows():
     if diff > 0.5:
         group_ids.append(idx + 1)
 
+group_ids.append(len(data_f))
+
 # Split dataframe using the id's created above
 l_mod = [0] + group_ids + [max(group_ids) + 1]
-list_of_dfs = [data_f.iloc[l_mod[n]:l_mod[n + 1]] for n in range(len(l_mod) - 1)]
+list_of_dfs = [data_f.iloc[l_mod[n]:l_mod[n + 1]].mean() for n in range(len(l_mod) - 1)]
+
+# Split LH & RH
+dfs_LH = []
+dfs_RH = []
+for df in list_of_dfs:
+    if df['calc_OPSpeedDelta'].max() > 15:
+        dfs_LH.append(df)
+    else:
+        dfs_RH.append(df)
 
 # Just some colours to see each dataframe plot more easily, remove at later stage.
 plot_colors = [
@@ -154,21 +164,43 @@ axSecondary1.plot(
     marker=None
 )
 
-# ax[2].plot(
-#     data['time'],
-#     data['calc_AxleTrqFromInput'],
-#     color='black',
-#     label='Axle Torque',
-#     marker=None    
-# )
+ax[2].plot(
+    data['time'],
+    data['calc_AxleTrqFromInput'],
+    color='black',
+    label='Axle Torque',
+    marker=None,
+    linewidth=0.5
+)
 
-for idx, dfgroup in enumerate(list_of_dfs):
+for idx, dfgroup in enumerate(dfs_LH):
     ax[2].scatter(
         dfgroup['time'],
         dfgroup['calc_AxleTrqFromInput'],
         color=plot_colors[idx],
         label='Axle Torque',
         marker=".",
+        s=50,
+        zorder=1
+    )
+# for idx, dfgroup in enumerate(dfs_LH):
+#     ax[2].scatter(
+#         dfgroup['time'].mean(),
+#         dfgroup['calc_AxleTrqFromInput'].mean(),
+#         color=plot_colors[idx],
+#         label='Axle Torque',
+#         marker=".",
+#         zorder=1
+#     )
+
+for idx, dfgroup in enumerate(dfs_RH):
+    ax[2].scatter(
+        dfgroup['time'],
+        dfgroup['calc_AxleTrqFromInput'],
+        color=plot_colors[idx+8],
+        label='Axle Torque',
+        marker=".",
+        s=50,
         zorder=1
     )
 
@@ -179,7 +211,22 @@ axSecondary0.set_ylim([-10, 10])
 axSecondary1.set_ylim([-100, 100])
 ax[0].set_title("Input Torque & Input Torque Delta", loc='left')
 fig.suptitle(f'Diff Test Overview - 3rd Gear', fontsize=16)
-    
+
+fig2, ax2 = plt.subplots(1)
+
+for idx, dfgroup in enumerate(dfs_RH):
+    ax2.scatter(
+        dfgroup['calc_AxleTrqFromInput'],
+        dfgroup['calc_LockTrq'],
+        color=plot_colors[idx+8],
+        label='Axle Torque',
+        marker=".",
+        s=100,
+        zorder=1
+    )
+
+
+
 plt.subplots_adjust(
     left=0.05,
     bottom=0.07,
