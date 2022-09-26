@@ -51,13 +51,38 @@ data['calc_LockTrq'] = data['Cadet_OP_Torque_1'] - data['Cadet_OP_Torque_2']
 data['calc_OPSpeedDelta'] = np.append(smooth(data['WhlRPM_RL'] - data['WhlRPM_RR'], sr + 1), 0.0)
 
 # TODO: Add zero points for filtered data
-# TODO: Group data sets into single data points
 # TODO: Plot main differential characterisation graph
 # TODO: Make executable
 
-# Split & Filter Data
-dataLH = data[(data['calc_OPSpeedDelta'] > 10.0) & (abs(data['calc_IPTrqGradient_smoothed']) < 1) & (abs(data['calc_AxleTrqFromInput']) > 50)]
-dataRH = data[(data['calc_OPSpeedDelta'] < -10.0) & (abs(data['calc_IPTrqGradient_smoothed']) < 1) & (abs(data['calc_AxleTrqFromInput']) > 50)]
+# Filter Data
+data_f = data[(abs(data['calc_OPSpeedDelta']) > 10.0) & (abs(data['calc_IPTrqGradient_smoothed']) < 1) & (abs(data['calc_AxleTrqFromInput']) > 50)]
+data_f = data_f.reset_index()
+
+# Group Data
+# First we build a list of indices which we use to split to dataframe up
+group_ids = [len(data_f)]
+for idx, row in data_f.iterrows():
+    if idx == len(data_f.index)-1:
+        break
+
+    cur = data_f.iloc[idx]
+    nxt = data_f.iloc[idx + 1]
+    diff = nxt['time'] - cur['time']
+
+    if diff > 0.5:
+        group_ids.append(idx + 1)
+
+# Split dataframe using the id's created above
+l_mod = [0] + group_ids + [max(group_ids) + 1]
+list_of_dfs = [data_f.iloc[l_mod[n]:l_mod[n + 1]] for n in range(len(l_mod) - 1)]
+
+# Just some colours to see each dataframe plot more easily, remove at later stage.
+plot_colors = [
+            "darkred", "red", "darkorange", "orange",
+            "gold", "yellow", "lime", "green", "darkgreen",
+            "turquoise", "cyan", "blue", "navy",
+            "purple", "pink", "magenta", "darkred"
+        ]
 
 # Set points for torque analysis graphs
 set_points_x = [-800, -400, -200, -100, 0, 100, 200, 400, 800]
@@ -129,29 +154,24 @@ axSecondary1.plot(
     marker=None
 )
 
-ax[2].plot(
-    data['time'],
-    data['calc_AxleTrqFromInput'],
-    color='black',
-    label='Axle Torque',
-    marker=None    
-)
-ax[2].scatter(
-    dataLH['time'],
-    dataLH['calc_AxleTrqFromInput'],
-    color='lime',
-    label='Axle Torque',
-    marker=".",
-    zorder=1
-)
-ax[2].scatter(
-    dataRH['time'],
-    dataRH['calc_AxleTrqFromInput'],
-    color='magenta',
-    label='Axle Torque',
-    marker=".",
-    zorder=1
-)
+# ax[2].plot(
+#     data['time'],
+#     data['calc_AxleTrqFromInput'],
+#     color='black',
+#     label='Axle Torque',
+#     marker=None    
+# )
+
+for idx, dfgroup in enumerate(list_of_dfs):
+    ax[2].scatter(
+        dfgroup['time'],
+        dfgroup['calc_AxleTrqFromInput'],
+        color=plot_colors[idx],
+        label='Axle Torque',
+        marker=".",
+        zorder=1
+    )
+
 set_axis(ax, 'x', 'Time [s]', 0, data['time'].max(), 50, 5)
 set_axis([ax[0]], 'y', 'Torque [Nm]', -200, 200, 50, 10)
 set_axis([ax[1], ax[2]], 'y', 'Torque [Nm]', -1000, 1000, 250, 50)
@@ -159,24 +179,6 @@ axSecondary0.set_ylim([-10, 10])
 axSecondary1.set_ylim([-100, 100])
 ax[0].set_title("Input Torque & Input Torque Delta", loc='left')
 fig.suptitle(f'Diff Test Overview - 3rd Gear', fontsize=16)
-
-if config.Debug:
-    print(
-        """
-        =============
-        DEBUG
-        =============
-        """
-    )
-    print(filePath, "\n\n")
-    print(data.head())
-    print(
-        """
-        =============
-        END DEBUG
-        =============
-        """
-    )
     
 plt.subplots_adjust(
     left=0.05,

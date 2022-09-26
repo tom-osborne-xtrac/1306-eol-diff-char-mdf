@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import tee, islice, chain
 import config
 
 def smooth(x, window_len, window='hanning'):
@@ -85,3 +86,10 @@ def get_gear(channel):
 def get_sample_rate(channel):
     deltas = np.diff(channel, n=1)
     return int(1 / (sum(deltas) / len(deltas)))
+
+
+def prev_and_next(iterable):
+    prevs, items, nexts = tee(iterable, 3)
+    prevs = chain([0.0], prevs)
+    nexts = chain(islice(nexts, 1, None), [0.0])
+    return zip(prevs, items, nexts)
