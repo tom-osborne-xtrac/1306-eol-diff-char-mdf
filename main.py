@@ -12,6 +12,10 @@ from utils import *
 
 # Set-ExecutionPolicy Unrestricted -Scope CurrentUser
 
+# TODO: Add zero points for filtered data
+# TODO: Plot main differential characterisation graph
+# TODO: Make executable
+
 # Select file for analysis
 filePath = './data/17082022_1306-019-DEV_Loaded_EOL_004_PHASE 150.mdf'
 if filePath == '':
@@ -49,10 +53,6 @@ data['calc_AxleTrqFromOutput'] = data['Cadet_OP_Torque_1'] + data['Cadet_OP_Torq
 data['calc_AxleTrqFromInput'] = data['Cadet_IP_Torque'] * ratio
 data['calc_LockTrq'] = data['Cadet_OP_Torque_1'] - data['Cadet_OP_Torque_2']
 data['calc_OPSpeedDelta'] = np.append(smooth(data['WhlRPM_RL'] - data['WhlRPM_RR'], sr + 1), 0.0)
-
-# TODO: Add zero points for filtered data
-# TODO: Plot main differential characterisation graph
-# TODO: Make executable
 
 # Filter Data
 data_f = data[(abs(data['calc_OPSpeedDelta']) > 10.0) & (abs(data['calc_IPTrqGradient_smoothed']) < 1) & (abs(data['calc_AxleTrqFromInput']) > 50)]
