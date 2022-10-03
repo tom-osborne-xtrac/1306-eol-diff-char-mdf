@@ -74,8 +74,8 @@ for idx, row in data_f.iterrows():
 group_ids.append(len(data_f))
 
 # Split dataframe using the id's created above
-l_mod = [0] + group_ids + [max(group_ids) + 1]
-list_of_dfs = [data_f.iloc[l_mod[n]:l_mod[n + 1]].mean() for n in range(len(l_mod) - 1)]
+l_mod = [0] + group_ids
+list_of_dfs = [data_f.iloc[l_mod[n]:l_mod[n + 1]] for n in range(len(l_mod) - 1)]
 
 # Split LH & RH
 dfs_LH = []
@@ -88,11 +88,11 @@ for df in list_of_dfs:
 
 # Just some colours to see each dataframe plot more easily, remove at later stage.
 plot_colors = [
-            "darkred", "red", "darkorange", "orange",
-            "gold", "yellow", "lime", "green", "darkgreen",
-            "turquoise", "cyan", "blue", "navy",
-            "purple", "pink", "magenta", "darkred"
-        ]
+    "darkred", "red", "darkorange", "orange",
+    "gold", "yellow", "lime", "green", "darkgreen",
+    "turquoise", "cyan", "blue", "navy",
+    "purple", "pink", "magenta", "darkred"
+]
 
 # Set points for torque analysis graphs
 set_points_x = [-800, -400, -200, -100, 0, 100, 200, 400, 800]
@@ -111,14 +111,14 @@ axSecondary0.plot(
     data['calc_IPTrqGradient_smoothed'],
     color='orange',
     label='IP Torque Gradient Smoothed',
-    marker=None    
+    marker=None
 )
 ax[0].plot(
     data['time'],
     data['Cadet_IP_Torque'],
     color='green',
     label='IP Torque',
-    marker=None    
+    marker=None
 )
 
 ax[1].plot(
@@ -126,35 +126,36 @@ ax[1].plot(
     data['calc_AxleTrqFromInput'],
     color='blue',
     label='Axle Torque',
-    marker=None    
+    marker=None
 )
 ax[1].plot(
     data['time'],
     data['Cadet_OP_Torque_1'],
     color='red',
     label='LH OP Torque',
-    marker=None    
+    marker=None
 )
 ax[1].plot(
     data['time'],
     data['Cadet_OP_Torque_2'],
     color='orange',
     label='RH OP Torque',
-    marker=None    
+    marker=None
 )
 axSecondary1.plot(
     data['time'],
     data['WhlRPM_RL'],
     color='grey',
     label='RH OP Torque',
-    marker=None    
+    marker=None
 )
+
 axSecondary1.plot(
     data['time'],
     data['WhlRPM_RR'],
     color='darkgrey',
     label='RH OP Torque',
-    marker=None    
+    marker=None
 )
 axSecondary1.plot(
     data['time'],
@@ -183,15 +184,6 @@ for idx, dfgroup in enumerate(dfs_LH):
         s=50,
         zorder=1
     )
-# for idx, dfgroup in enumerate(dfs_LH):
-#     ax[2].scatter(
-#         dfgroup['time'].mean(),
-#         dfgroup['calc_AxleTrqFromInput'].mean(),
-#         color=plot_colors[idx],
-#         label='Axle Torque',
-#         marker=".",
-#         zorder=1
-#     )
 
 for idx, dfgroup in enumerate(dfs_RH):
     ax[2].scatter(
@@ -216,8 +208,8 @@ fig2, ax2 = plt.subplots(1)
 
 for idx, dfgroup in enumerate(dfs_RH):
     ax2.scatter(
-        dfgroup['calc_AxleTrqFromInput'],
-        dfgroup['calc_LockTrq'],
+        dfgroup['calc_AxleTrqFromInput'].mean(),
+        dfgroup['calc_LockTrq'].mean(),
         color=plot_colors[idx+8],
         label='Axle Torque',
         marker=".",
@@ -225,7 +217,18 @@ for idx, dfgroup in enumerate(dfs_RH):
         zorder=1
     )
 
+# ax2.plot(
+#     data_LH['calc_AxleTrqFromInput'],
+#     data_LH['calc_LockTrq'],
+#     color="red",
+#     label='LH Data',
+#     marker=".",
+#     s=100,
+#     zorder=1
+# )
 
+set_axis([ax2], 'x', 'Input Torque [Nm]', -1000, 1000, 200, 100)
+set_axis([ax2], 'y', 'Locking Torque [Nm]', 0, 1000, 200, 100)
 
 plt.subplots_adjust(
     left=0.05,
