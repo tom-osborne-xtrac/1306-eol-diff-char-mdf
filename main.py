@@ -217,16 +217,6 @@ for idx, dfgroup in enumerate(dfs_RH):
         zorder=1
     )
 
-# ax2.plot(
-#     data_LH['calc_AxleTrqFromInput'],
-#     data_LH['calc_LockTrq'],
-#     color="red",
-#     label='LH Data',
-#     marker=".",
-#     s=100,
-#     zorder=1
-# )
-
 set_axis([ax2], 'x', 'Input Torque [Nm]', -1000, 1000, 200, 100)
 set_axis([ax2], 'y', 'Locking Torque [Nm]', 0, 1000, 200, 100)
 
