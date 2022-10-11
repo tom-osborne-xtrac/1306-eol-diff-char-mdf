@@ -93,3 +93,31 @@ def prev_and_next(iterable):
     prevs = chain([0.0], prevs)
     nexts = chain(islice(nexts, 1, None), [0.0])
     return zip(prevs, items, nexts)
+
+
+def SplitData(df):
+    # Group Data
+    # First we loop through the filtered data, using time channel and find "gaps"
+    # We then build a list of indices where these gaps occur, which we can use to split to dataframe up
+    group_idxs = []
+
+    for idx, _ in df.iterrows():
+        if idx == len(df.index)-1:
+            break
+
+        cur = df.iloc[idx]
+        nxt = df.iloc[idx + 1]
+        diff = nxt['time'] - cur['time']
+
+        if diff > 0.5:        
+            group_idxs.append(idx + 1)
+
+    # # We also need the last index to capture the final group
+    group_idxs.append(len(df))
+
+
+    # Split dataframe using the id's created above
+    l_mod = [0] + group_idxs + [max(group_idxs) + 1]
+    list_of_dfs = [df.iloc[l_mod[n]:l_mod[n + 1]] for n in range(len(l_mod) - 1)]
+
+    return list_of_dfs

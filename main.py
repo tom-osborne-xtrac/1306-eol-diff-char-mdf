@@ -54,37 +54,35 @@ data['calc_LockTrq'] = data['Cadet_OP_Torque_1'] - data['Cadet_OP_Torque_2']
 data['calc_OPSpeedDelta'] = np.append(smooth(data['WhlRPM_RL'] - data['WhlRPM_RR'], sr + 1), 0.0)
 
 # Filter Data
-data_f = data[(abs(data['calc_OPSpeedDelta']) > 10.0) & (abs(data['calc_IPTrqGradient_smoothed']) < 1) & (abs(data['calc_AxleTrqFromInput']) > 50)]
-data_f = data_f.reset_index()
+data_f = data[
+    ((abs(data['calc_OPSpeedDelta']) > 10.0) & 
+    (abs(data['calc_IPTrqGradient_smoothed']) < 1) & 
+    (abs(data['calc_AxleTrqFromInput']) > 50))
+].reset_index()
+data_zero = data[
+    (abs((data['calc_OPSpeedDelta']) > 15) & 
+    (abs(data['Cadet_IP_Torque']) < 5) &
+    (abs(data['calc_IPTrqGradient_smoothed']) < 1))
+]
 
-# Group Data
-# First we build a list of indices which we use to split to dataframe up
-group_ids = []
-for idx, row in data_f.iterrows():
-    if idx == len(data_f.index)-1:
-        break
+# LH Data
+data_f_L = data_f[data_f['calc_OPSpeedDelta'] > 15].reset_index()
+data_f_L_grouped = SplitData(data_f_L)
 
-    cur = data_f.iloc[idx]
-    nxt = data_f.iloc[idx + 1]
-    diff = nxt['time'] - cur['time']
+# RH Data
+data_f_R = data_f[data_f['calc_OPSpeedDelta'] < -15].reset_index()
+data_f_R_grouped = SplitData(data_f_R)
 
-    if diff > 0.5:
-        group_ids.append(idx + 1)
+# # Split LH & RH
+# dfs_LH = pd.DataFrame()
+# dfs_RH = pd.DataFrame()
+# for df in list_of_dfs:
+#     print(df)
+#     if df['calc_OPSpeedDelta'].max() > 15:
+#         dfs_LH = pd.concat([dfs_LH, df], axis=1)
+#     else:
+#         dfs_RH = pd.concat([dfs_RH, df], axis=1)
 
-group_ids.append(len(data_f))
-
-# Split dataframe using the id's created above
-l_mod = [0] + group_ids + [max(group_ids) + 1]
-list_of_dfs = [data_f.iloc[l_mod[n]:l_mod[n + 1]].mean() for n in range(len(l_mod) - 1)]
-
-# Split LH & RH
-dfs_LH = []
-dfs_RH = []
-for df in list_of_dfs:
-    if df['calc_OPSpeedDelta'].max() > 15:
-        dfs_LH.append(df)
-    else:
-        dfs_RH.append(df)
 
 # Just some colours to see each dataframe plot more easily, remove at later stage.
 plot_colors = [
@@ -173,31 +171,31 @@ ax[2].plot(
     linewidth=0.5
 )
 
-for idx, dfgroup in enumerate(dfs_LH):
-    ax[2].scatter(
-        dfgroup['time'],
-        dfgroup['calc_AxleTrqFromInput'],
-        color=plot_colors[idx],
-        label='Axle Torque',
-        marker=".",
-        s=50,
-        zorder=1
-    )
-# for idx, dfgroup in enumerate(dfs_LH):
+# for idx, dfgroup in enumerate(list_of_dfs):
 #     ax[2].scatter(
-#         dfgroup['time'].mean(),
-#         dfgroup['calc_AxleTrqFromInput'].mean(),
+#         dfgroup['time'],
+#         dfgroup['calc_AxleTrqFromInput'],
 #         color=plot_colors[idx],
 #         label='Axle Torque',
 #         marker=".",
+#         s=50,
 #         zorder=1
 #     )
-
-for idx, dfgroup in enumerate(dfs_RH):
+for idx, dfgroup in enumerate(data_f_L_grouped):
     ax[2].scatter(
         dfgroup['time'],
         dfgroup['calc_AxleTrqFromInput'],
-        color=plot_colors[idx+8],
+        color="red",
+        label='Axle Torque',
+        marker=".",
+        zorder=1
+    )
+
+for idx, dfgroup in enumerate(data_f_R_grouped):
+    ax[2].scatter(
+        dfgroup['time'],
+        dfgroup['calc_AxleTrqFromInput'],
+        color="blue",
         label='Axle Torque',
         marker=".",
         s=50,
@@ -214,18 +212,33 @@ fig.suptitle(f'Diff Test Overview - 3rd Gear', fontsize=16)
 
 fig2, ax2 = plt.subplots(1)
 
-for idx, dfgroup in enumerate(dfs_RH):
+for idx, dfgroup in enumerate(data_f_L_grouped):
     ax2.scatter(
-        dfgroup['calc_AxleTrqFromInput'],
-        dfgroup['calc_LockTrq'],
-        color=plot_colors[idx+8],
+        dfgroup['calc_AxleTrqFromInput'].mean(),
+        abs(dfgroup['calc_LockTrq'].mean()),
+        color="red",
         label='Axle Torque',
         marker=".",
         s=100,
         zorder=1
     )
 
+for idx, dfgroup in enumerate(data_f_R_grouped):
+    ax2.scatter(
+        dfgroup['calc_AxleTrqFromInput'].mean(),
+        abs(dfgroup['calc_LockTrq'].mean()),
+        color="blue",
+        label='Axle Torque',
+        marker=".",
+        s=100,
+        zorder=1
+    )
 
+set_axis([ax2], 'x', ' Input Torque [Nm]', -1000, 1000, 100, 50)
+set_axis([ax2], 'y', ' Locking Torque [Nm]', 0, 1000, 100, 50)
+ax2.axvline(0, color='black')
+ax2.spines['bottom'].set_linewidth(2)
+ax2.legend()
 
 plt.subplots_adjust(
     left=0.05,
