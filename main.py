@@ -73,24 +73,13 @@ data_f_L_grouped = SplitData(data_f_L)
 data_f_R = data_f[data_f['calc_OPSpeedDelta'] < -15].reset_index()
 data_f_R_grouped = SplitData(data_f_R)
 
-# # Split LH & RH
-# dfs_LH = pd.DataFrame()
-# dfs_RH = pd.DataFrame()
-# for df in list_of_dfs:
-#     print(df)
-#     if df['calc_OPSpeedDelta'].max() > 15:
-#         dfs_LH = pd.concat([dfs_LH, df], axis=1)
-#     else:
-#         dfs_RH = pd.concat([dfs_RH, df], axis=1)
-
-
 # Just some colours to see each dataframe plot more easily, remove at later stage.
 plot_colors = [
-            "darkred", "red", "darkorange", "orange",
-            "gold", "yellow", "lime", "green", "darkgreen",
-            "turquoise", "cyan", "blue", "navy",
-            "purple", "pink", "magenta", "darkred"
-        ]
+    "darkred", "red", "darkorange", "orange",
+    "gold", "yellow", "lime", "green", "darkgreen",
+    "turquoise", "cyan", "blue", "navy",
+    "purple", "pink", "magenta", "darkred"
+]
 
 # Set points for torque analysis graphs
 set_points_x = [-800, -400, -200, -100, 0, 100, 200, 400, 800]
@@ -100,115 +89,117 @@ for v in set_points_x:
     set_points.append(pair)
 plot_set_points = matcoll.LineCollection(set_points)
 
-# Plot raw data
-fig, ax = plt.subplots(3)
-axSecondary0 = ax[0].twinx()
-axSecondary1 = ax[1].twinx()
-axSecondary0.plot(
-    data['time'],
-    data['calc_IPTrqGradient_smoothed'],
-    color='orange',
-    label='IP Torque Gradient Smoothed',
-    marker=None    
-)
-ax[0].plot(
-    data['time'],
-    data['Cadet_IP_Torque'],
-    color='green',
-    label='IP Torque',
-    marker=None    
-)
-
-ax[1].plot(
-    data['time'],
-    data['calc_AxleTrqFromInput'],
-    color='blue',
-    label='Axle Torque',
-    marker=None    
-)
-ax[1].plot(
-    data['time'],
-    data['Cadet_OP_Torque_1'],
-    color='red',
-    label='LH OP Torque',
-    marker=None    
-)
-ax[1].plot(
-    data['time'],
-    data['Cadet_OP_Torque_2'],
-    color='orange',
-    label='RH OP Torque',
-    marker=None    
-)
-axSecondary1.plot(
-    data['time'],
-    data['WhlRPM_RL'],
-    color='grey',
-    label='RH OP Torque',
-    marker=None    
-)
-axSecondary1.plot(
-    data['time'],
-    data['WhlRPM_RR'],
-    color='darkgrey',
-    label='RH OP Torque',
-    marker=None    
-)
-axSecondary1.plot(
-    data['time'],
-    data['calc_OPSpeedDelta'],
-    color='black',
-    label='OP Speed Delta [rpm]',
-    marker=None
-)
-
-ax[2].plot(
-    data['time'],
-    data['calc_AxleTrqFromInput'],
-    color='black',
-    label='Axle Torque',
-    marker=None,
-    linewidth=0.5
-)
-
-# for idx, dfgroup in enumerate(list_of_dfs):
-#     ax[2].scatter(
-#         dfgroup['time'],
-#         dfgroup['calc_AxleTrqFromInput'],
-#         color=plot_colors[idx],
-#         label='Axle Torque',
-#         marker=".",
-#         s=50,
-#         zorder=1
-#     )
-for idx, dfgroup in enumerate(data_f_L_grouped):
-    ax[2].scatter(
-        dfgroup['time'],
-        dfgroup['calc_AxleTrqFromInput'],
-        color="red",
-        label='Axle Torque',
-        marker=".",
-        zorder=1
+if config.Debug:
+    # Plot raw data
+    fig, ax = plt.subplots(3)
+    axSecondary0 = ax[0].twinx()
+    axSecondary1 = ax[1].twinx()
+    axSecondary0.plot(
+        data['time'],
+        data['calc_IPTrqGradient_smoothed'],
+        color='orange',
+        label='IP Torque Gradient Smoothed',
+        marker=None
+    )
+    ax[0].plot(
+        data['time'],
+        data['Cadet_IP_Torque'],
+        color='green',
+        label='IP Torque',
+        marker=None
     )
 
-for idx, dfgroup in enumerate(data_f_R_grouped):
-    ax[2].scatter(
-        dfgroup['time'],
-        dfgroup['calc_AxleTrqFromInput'],
-        color="blue",
+    ax[1].plot(
+        data['time'],
+        data['calc_AxleTrqFromInput'],
+        color='blue',
         label='Axle Torque',
-        marker=".",
-        s=50,
-        zorder=1
+        marker=None
+    )
+    ax[1].plot(
+        data['time'],
+        data['Cadet_OP_Torque_1'],
+        color='red',
+        label='LH OP Torque',
+        marker=None
+    )
+    ax[1].plot(
+        data['time'],
+        data['Cadet_OP_Torque_2'],
+        color='orange',
+        label='RH OP Torque',
+        marker=None
+    )
+    axSecondary1.plot(
+        data['time'],
+        data['WhlRPM_RL'],
+        color='grey',
+        label='RH OP Torque',
+        marker=None
     )
 
-set_axis(ax, 'x', 'Time [s]', 0, data['time'].max(), 50, 5)
-set_axis([ax[0]], 'y', 'Torque [Nm]', -200, 200, 50, 10)
-set_axis([ax[1], ax[2]], 'y', 'Torque [Nm]', -1000, 1000, 250, 50)
-axSecondary0.set_ylim([-10, 10])
-axSecondary1.set_ylim([-100, 100])
-ax[0].set_title("Input Torque & Input Torque Delta", loc='left')
-fig.suptitle(f'Diff Test Overview - 3rd Gear', fontsize=16)
+    axSecondary1.plot(
+        data['time'],
+        data['WhlRPM_RR'],
+        color='darkgrey',
+        label='RH OP Torque',
+        marker=None
+    )
+    axSecondary1.plot(
+        data['time'],
+        data['calc_OPSpeedDelta'],
+        color='black',
+        label='OP Speed Delta [rpm]',
+        marker=None
+    )
+
+    ax[2].plot(
+        data['time'],
+        data['calc_AxleTrqFromInput'],
+        color='black',
+        label='Axle Torque',
+        marker=None,
+        linewidth=0.5
+    )
+
+    # for idx, dfgroup in enumerate(list_of_dfs):
+    #     ax[2].scatter(
+    #         dfgroup['time'],
+    #         dfgroup['calc_AxleTrqFromInput'],
+    #         color=plot_colors[idx],
+    #         label='Axle Torque',
+    #         marker=".",
+    #         s=50,
+    #         zorder=1
+    #     )
+    for idx, dfgroup in enumerate(data_f_L_grouped):
+        ax[2].scatter(
+            dfgroup['time'],
+            dfgroup['calc_AxleTrqFromInput'],
+            color="red",
+            label='Axle Torque',
+            marker=".",
+            zorder=1
+        )
+
+    for idx, dfgroup in enumerate(data_f_R_grouped):
+        ax[2].scatter(
+            dfgroup['time'],
+            dfgroup['calc_AxleTrqFromInput'],
+            color="blue",
+            label='Axle Torque',
+            marker=".",
+            s=50,
+            zorder=1
+        )
+
+    set_axis(ax, 'x', 'Time [s]', 0, data['time'].max(), 50, 5)
+    set_axis([ax[0]], 'y', 'Torque [Nm]', -200, 200, 50, 10)
+    set_axis([ax[1], ax[2]], 'y', 'Torque [Nm]', -1000, 1000, 250, 50)
+    axSecondary0.set_ylim([-10, 10])
+    axSecondary1.set_ylim([-100, 100])
+    ax[0].set_title("Input Torque & Input Torque Delta", loc='left')
+    fig.suptitle(f'Diff Test Overview - 3rd Gear', fontsize=16)
 
 fig2, ax2 = plt.subplots(1)
 
@@ -238,7 +229,6 @@ set_axis([ax2], 'x', ' Input Torque [Nm]', -1000, 1000, 100, 50)
 set_axis([ax2], 'y', ' Locking Torque [Nm]', 0, 1000, 100, 50)
 ax2.axvline(0, color='black')
 ax2.spines['bottom'].set_linewidth(2)
-ax2.legend()
 
 plt.subplots_adjust(
     left=0.05,

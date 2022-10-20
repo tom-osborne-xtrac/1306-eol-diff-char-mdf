@@ -1,4 +1,4 @@
-Debug = True
+Debug = False
 Channels = [
     # Speed Channels
     'Cadet_IP_Speed',
