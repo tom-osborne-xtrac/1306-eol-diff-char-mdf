@@ -19,7 +19,8 @@ from functions import *
 # TODO: Make executable
 
 # Select file for analysis
-filePath = './data/17082022_1306-019-DEV_Loaded_EOL_004_PHASE 150.mdf'
+# filePath = './data/17082022_1306-019-DEV_Loaded_EOL_004_PHASE 150.mdf'
+filePath = ''
 if filePath == '':
     filePath = tk.filedialog.askopenfilename()
 fileName = os.path.basename(filePath)
@@ -55,14 +56,14 @@ data['calc_OPSpeedDelta'] = np.append(smooth(data['WhlRPM_RL'] - data['WhlRPM_RR
 
 # Filter Data
 data_f = data[
-    ((abs(data['calc_OPSpeedDelta']) > 10.0) & 
+    (abs(data['calc_OPSpeedDelta']) > 10.0) & 
     (abs(data['calc_IPTrqGradient_smoothed']) < 1) & 
-    (abs(data['calc_AxleTrqFromInput']) > 50))
+    (abs(data['calc_AxleTrqFromInput']) > 50)
 ].reset_index()
 data_zero = data[
-    (abs((data['calc_OPSpeedDelta']) > 15) & 
+    (abs(data['calc_OPSpeedDelta']) > 15) & 
     (abs(data['Cadet_IP_Torque']) < 5) &
-    (abs(data['calc_IPTrqGradient_smoothed']) < 1))
+    (abs(data['calc_IPTrqGradient_smoothed']) < 1)
 ]
 
 # LH Data
