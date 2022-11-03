@@ -12,15 +12,17 @@ from scipy.ndimage import uniform_filter1d
 import config as config
 from functions import *
 
+# The below command can be used in PowerShell if you are having permission issues with starting the virtual environment
 # Set-ExecutionPolicy Unrestricted -Scope CurrentUser
 
 # TODO: Add zero points for filtered data
-# TODO: Plot main differential characterisation graph
 # TODO: Make executable
 
 # Select file for analysis
-# filePath = './data/17082022_1306-019-DEV_Loaded_EOL_004_PHASE 150.mdf'
 filePath = ''
+if config.Debug and config.UseSampleData:
+    filePath = './data/17082022_1306-019-DEV_Loaded_EOL_004_PHASE 150.mdf'
+
 if filePath == '':
     filePath = tk.filedialog.askopenfilename()
 fileName = os.path.basename(filePath)
@@ -42,8 +44,8 @@ for channel in config.Channels:
 data = data.rename(columns={'t_71': 'time'})
 
 # Misc information
-sr = get_sample_rate(data['time'])
-gear, gear_hr, ratio = get_gear(data['GearEngd'])
+sr = get_sample_rate(data['time']) # Sample Rate
+gear, gear_hr, ratio = get_gear(data['GearEngd']) # Gear, Gear (Human readable), Ratio
 
 # Calculated channels
 calc_IPTrqGradient = np.gradient(uniform_filter1d(data['Cadet_IP_Torque'] , size=int(sr)), edge_order=2) * 100
@@ -55,16 +57,25 @@ data['calc_LockTrq'] = data['Cadet_OP_Torque_1'] - data['Cadet_OP_Torque_2']
 data['calc_OPSpeedDelta'] = np.append(smooth(data['WhlRPM_RL'] - data['WhlRPM_RR'], sr + 1), 0.0)
 
 # Filter Data
+# Here we are filtering the raw data to pick out the static loaded sections
+# This is the data we need to produce the graph and should ignore all ramps and unloaded sections
 data_f = data[
     (abs(data['calc_OPSpeedDelta']) > 10.0) & 
     (abs(data['calc_IPTrqGradient_smoothed']) < 1) & 
     (abs(data['calc_AxleTrqFromInput']) > 50)
 ].reset_index()
+
+# Attempt at adding data points for zero load
+# Previously I was able to do this by taking 50 points of data while unloaded and cornering
+# This method is trying to filter based on the following conditions, but seems to pick up some erroneous data
 data_zero = data[
     (abs(data['calc_OPSpeedDelta']) > 15) & 
     (abs(data['Cadet_IP_Torque']) < 5) &
     (abs(data['calc_IPTrqGradient_smoothed']) < 1)
 ]
+
+# Here we are splitting the data into two data series, to be distinguished on the plot as LH and RH corners
+# This allows us to see any "asymmetry" in the diff, which seems particularly prominent in the Coast direction
 
 # LH Data
 data_f_L = data_f[data_f['calc_OPSpeedDelta'] > 15].reset_index()
@@ -83,6 +94,7 @@ plot_colors = [
 ]
 
 # Set points for torque analysis graphs
+# This can be used to format the axis
 set_points_x = [-800, -400, -200, -100, 0, 100, 200, 400, 800]
 set_points = []
 for v in set_points_x:
@@ -90,6 +102,11 @@ for v in set_points_x:
     set_points.append(pair)
 plot_set_points = matcoll.LineCollection(set_points)
 
+
+# Plot Data
+# Fig 1: Raw data plotted as time series - Useful for debugging the analysis and checking the test 
+# was completed correctly
+# Fig 2: Diff Characterisation Plot: This is x-axis = Input  Torque; y-axis = Locking Torque
 if config.Debug:
     # Plot raw data
     fig, ax = plt.subplots(3)
@@ -163,6 +180,7 @@ if config.Debug:
         linewidth=0.5
     )
 
+    # This can be uncommented if you want to see each data group in its own colour (check for anomolies)
     # for idx, dfgroup in enumerate(list_of_dfs):
     #     ax[2].scatter(
     #         dfgroup['time'],
@@ -202,6 +220,7 @@ if config.Debug:
     ax[0].set_title("Input Torque & Input Torque Delta", loc='left')
     fig.suptitle(f'Diff Test Overview - 3rd Gear', fontsize=16)
 
+# Diff Characterisaion Plot
 fig2, ax2 = plt.subplots(1)
 
 for idx, dfgroup in enumerate(data_f_L_grouped):
